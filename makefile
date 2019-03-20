@@ -1,6 +1,6 @@
 CXX=g++
 
-CPPFLAGS=-I/media/mickpoletti/Linux/CSE3310/project/include
+CPPFLAGS=-I/media/mickpoletti/Linux/CSE3310/SuperChat/include
 
 CXXFLAGS=-Wall -O0 -g -std=c++11
 
