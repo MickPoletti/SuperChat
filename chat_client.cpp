@@ -91,7 +91,7 @@ public:
     set_field_type(field[1], TYPE_ALNUM);
     set_field_back(field[1], A_UNDERLINE);
     field_opts_off(field[1], O_AUTOSKIP);
-    field_opts_off(field[1], O_PUBLIC);
+    //field_opts_off(field[1], O_PUBLIC);
     set_field_type(field[2], TYPE_ALNUM);
     set_field_back(field[2], A_UNDERLINE);
     field_opts_off(field[2], O_AUTOSKIP);
@@ -119,9 +119,11 @@ public:
       set_field_buffer(field[0], 0, username);
       set_field_buffer(field[2], 0 , "N");
     }
+    bool out = false;
     /* Loop through to get user requests */
-    while((ch = getch()) != KEY_F(1))
+    while(out == false)
     {
+      ch = getch();
       switch(ch)
       {	case KEY_DOWN:
           /* Go to next field */
@@ -130,7 +132,6 @@ public:
         case KEY_UP:
           /* Go to previous field */
           form_driver(my_form, REQ_PREV_FIELD);
-          form_driver(my_form, REQ_END_LINE);
           break;
         case KEY_BACKSPACE:
           form_driver(my_form, REQ_PREV_CHAR);
@@ -163,16 +164,8 @@ public:
           }
           else
           {
-            attron(COLOR_PAIR(3));
-            mvprintw(14, 25, "Please enter a username or password");
-            attroff(COLOR_PAIR(3));
-            attron(COLOR_PAIR(1));
-            mvprintw(12, 45, "Login");
-            attroff(COLOR_PAIR(1));
-            refresh();
             if(strcmp(choice, "Y") == 0)
             {
-              set_field_buffer(field[0], 0, "fuck");
               int i;
               for(i=0; i<=strlen(tempUser); i++){
                 username[i] = tempUser[i];
@@ -180,6 +173,14 @@ public:
               for(i=0; i<=strlen(tempPassword); i++){
                 password[i] = tempPassword[i];
               }
+              attron(COLOR_PAIR(3));
+              mvprintw(14, 25, "Please enter a username or password");
+              attroff(COLOR_PAIR(3));
+              attron(COLOR_PAIR(1));
+              mvprintw(12, 45, "Login");
+              attroff(COLOR_PAIR(1));
+              refresh();
+              out = true;
             }
             else
             {
@@ -192,6 +193,14 @@ public:
                 for(i=0; i<=strlen(tempPassword); i++){
                   password[i] = tempPassword[i];
                 }
+                attron(COLOR_PAIR(3));
+                mvprintw(14, 25, "Please enter a username or password");
+                attroff(COLOR_PAIR(3));
+                attron(COLOR_PAIR(1));
+                mvprintw(12, 45, "Login");
+                attroff(COLOR_PAIR(1));
+                refresh();
+                out = true;
               }
               else
               {
@@ -232,9 +241,8 @@ public:
     {
       if(test(userIn))
       {
-      make_login();
-      userOut << username << " " << password;
-    }
+        make_login();
+      }
     }
     else
     {
@@ -259,9 +267,12 @@ public:
 
   bool verify(char* tempUser, char* tempPassword)
   {
-    if((std::strcmp(tempUser, username) && std::strcmp(tempPassword, password)) == 0)
+    if(std::strcmp(tempPassword, password) == 0)
     {
+      if(std::strcmp(tempUser, username) == 0)
+      {
         return true;
+      }
     }
     else
     {
@@ -288,8 +299,9 @@ public:
         return false;
       }
     }
-    return false;
+
     */
+    return false;
   }
 
   char* get_username()
