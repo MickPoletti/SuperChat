@@ -1,6 +1,6 @@
 CXX=g++
 
-CPPFLAGS=-I/media/mickpoletti/Linux/CSE3310/SuperChat/include
+CPPFLAGS=-I/media/mickpoletti/Linux/CSE3310/SuperChat/include # You will need to change this to where your include is located.
 
 CXXFLAGS=-Wall -O0 -g -std=c++11
 
@@ -20,4 +20,3 @@ chat_server:chat_server.o
 
 clean:
 	-rm -f chat_client chat_server chat_client.o chat_server.o
-

@@ -173,6 +173,7 @@ public:
               for(i=0; i<=strlen(tempPassword); i++){
                 password[i] = tempPassword[i];
               }
+              /* TODO: This section of code needs to be called alot let's make it a function */
               attron(COLOR_PAIR(3));
               mvprintw(14, 25, "Please enter a username or password");
               attroff(COLOR_PAIR(3));
@@ -265,6 +266,7 @@ public:
     return false;
   }
 
+  /* TODO: This function will need to send information to the server before returning true or false! */
   bool verify(char* tempUser, char* tempPassword)
   {
     if(std::strcmp(tempPassword, password) == 0)
