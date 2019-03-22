@@ -7,7 +7,7 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
-
+#include <sys/stat.h>
 #include <cstdlib>
 #include <deque>
 #include <iostream>
@@ -55,8 +55,19 @@ public:
     asio::post(io_context_, [this]() { socket_.close(); });
   }
 
+  bool fileExists(const std::string& filename)
+{
+    struct stat buf;
+    if (stat(filename.c_str(), &buf) != -1)
+    {
+        return true;
+    }
+    return false;
+}
+
   void make_login()
   {
+
     FIELD *field[4];
     FORM  *my_form;
     int ch;
@@ -236,31 +247,35 @@ public:
 
   void login()
   {
-    std::ifstream userIn("userID.txt");
-    std::ofstream userOut("userID.txt", std::ios::app);
-    if(userIn.is_open())
+    username[0] = '\0';
+    if(fileExists("userID.txt"))
     {
+      std::ifstream userIn("userID.txt");
+      std::ofstream userOut("userID.txt", std::ios::app);
       if(test(userIn))
       {
         make_login();
       }
+      userIn.close();
+      userOut.close();
     }
     else
     {
       make_login();
+      std::ofstream userOut("userID.txt", std::ios::app);
       userOut << username << " " << password;
-      //userOut << username;
+      userOut.close();
     }
 
-    userIn.close();
-    userOut.close();
+
     std::strcat(username, ": ");
 
   }
 
   bool test(std::ifstream& userIn)
   {
-    while(userIn >> username >> password){
+    while(userIn >> username >> password)
+    {
       return true;
     }
     return false;
