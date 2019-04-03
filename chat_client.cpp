@@ -15,6 +15,8 @@
 #include <fstream>
 #include <ctype.h>
 #include <sstream>
+#include <cstdlib>
+#include <unistd.h>
 
 #include "asio.hpp"
 #include <ncurses.h>
@@ -56,18 +58,112 @@ public:
   }
 
   bool fileExists(const std::string& filename)
-{
+  {
     struct stat buf;
     if (stat(filename.c_str(), &buf) != -1)
     {
         return true;
     }
     return false;
-}
+  }
+
+  int startClient()
+  {
+  	int x, y;
+  	int x1,y1;
+
+   	initscr();
+  	noecho();
+  	curs_set(FALSE);
+
+
+  	getmaxyx(stdscr, y,x);
+  	WINDOW *lobby = newwin(y-5,x-25,0,0);
+  	WINDOW *txt_field = newwin(5,x-25,y-5,0);
+  	WINDOW *display_users = newwin(y-18,20,0,x-23);
+  	WINDOW *chat_rooms = newwin(y-8,20,y-18,x-23);
+  	WINDOW *options= newwin(5,20,y-5,x-23);
+
+  	box(lobby,0,0);
+  	box(txt_field,0,0);
+  	box(display_users,0,0);
+  	box(chat_rooms,0,0);
+  	box(options,0,0);
+  /*
+  	while(1)
+  	{
+
+  	getmaxyx(stdscr,y1,x1);
+  	if(y1!=y || x1!=x)
+  	{
+  	x = x1;
+  	y = y1;
+  	wresize(lobby,y1-5,x);
+  	wresize(txt_field,5, x1);
+  	wresize(display_users,y1-5, x1);
+  	wresize(options,5, x1);
+  	wclear(stdscr);
+  	wclear(lobby);
+  	wclear(txt_field);
+  	wclear(display_users);
+  	wclear(chat_rooms);
+  	wclear(options);
+
+
+  	}
+  */
+
+
+  mvwprintw(lobby,0,0,"LOBBY");
+  mvwprintw(txt_field,0,0,"TEXT FIELD");
+  mvwprintw(display_users,0,0,"Online users");
+  mvwprintw(chat_rooms,0,0,"Chat Rooms");
+  mvwprintw(options,0,0,"Options");
+  refresh();
+
+  wrefresh(lobby);
+  wrefresh(display_users);
+  wrefresh(chat_rooms);
+  wrefresh(options);
+  wrefresh(txt_field);
+
+
+
+
+    bool out = false;
+    /* Loop through to get user requests */
+    while(out == false)
+    {
+      char ch = getch();
+      if(ch != '\n')
+      {
+          mvwaddch(txt_field, 0, 1, ch);
+          wrefresh(txt_field);
+      }
+      else{
+        out = true;
+      }
+    }
+
+
+  	sleep(10);
+
+
+  	delwin(lobby);
+  	delwin(txt_field);
+  	delwin(display_users);
+  	delwin(chat_rooms);
+  	delwin(options);
+
+  	endwin();
+  	return 0;
+
+
+
+  }
 
   void make_login()
   {
-
     FIELD *field[4];
     FORM  *my_form;
     int ch;
@@ -446,6 +542,7 @@ int main(int argc, char* argv[])
     auto endpoints = resolver.resolve(argv[1], argv[2]);
     chat_client c(io_context, endpoints);
     c.login();
+    c.startClient();
     std::thread t([&io_context](){ io_context.run(); });
 
 
