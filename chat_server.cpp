@@ -15,6 +15,8 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include <string>
+#include <sstream>
 
 #include "asio.hpp"
 #include <ncurses.h>
@@ -27,6 +29,9 @@ using asio::ip::tcp;
 typedef std::deque<chat_message> chat_message_queue;
 
 //----------------------------------------------------------------------
+
+
+int usersavail;
 
 class chat_participant
 {
@@ -46,20 +51,53 @@ public:
   void join(chat_participant_ptr participant)
   {
 
-    chat_message xd;
-    xd.body_length(std::strlen("Hello  user"));
-    std::memcpy(xd.body(), "Hello user", std::strlen("Hello  user"));
-    xd.encode_header();
+    //chat_message xd;
+    //xd.body_length(std::strlen("Hello  user"));
+    //std::memcpy(xd.body(), "Hello user", std::strlen("Hello  user"));
+    //xd.encode_header();
+    //participant->deliver(xd);
+
+
     participants_.insert(participant);
-    participant->deliver(xd);
+	  usersavail++;
+	  availability(usersavail,participant);
+
 
     for (auto msg: recent_msgs_)
       participant->deliver(msg);
+
   }
 
   void leave(chat_participant_ptr participant)
   {
     participants_.erase(participant);
+	  usersavail--;
+    if(usersavail <= 0)
+    {
+        usersavail = 0;
+    }
+
+	  availability(usersavail,participant);
+  }
+
+
+
+
+
+  void availability(int a,chat_participant_ptr participant)
+  {
+    std::ostringstream s1;
+    s1<<"Users available: "<<a<<std::flush<<'\r';
+    std::string let=s1.str();
+    const void *point=let.c_str();
+
+    chat_message av;
+    av.body_length(std::strlen("Users Available   "));
+    std::memcpy(av.body(), point , 30);
+    av.encode_header();
+    participant->deliver(av);
+
+    std::cout<<"Users available: "<<a<<std::flush<<'\r';
   }
 
   void deliver(const chat_message& msg)
@@ -91,10 +129,13 @@ public:
   {
   }
 
+
+
   void start()
   {
     room_.join(shared_from_this());
     do_read_header();
+
   }
 
   void deliver(const chat_message& msg)
@@ -105,7 +146,10 @@ public:
     {
       do_write();
     }
+
+
   }
+
 
 
 private:
@@ -157,6 +201,7 @@ private:
           if (!ec)
           {
             write_msgs_.pop_front();
+
             if (!write_msgs_.empty())
             {
               do_write();
@@ -187,6 +232,10 @@ public:
     do_accept();
   }
 
+
+
+
+
 private:
   void do_accept()
   {
@@ -206,11 +255,14 @@ private:
   chat_room room_;
 };
 
+
+
 //----------------------------------------------------------------------
 
 
 int main(int argc, char* argv[])
 {
+usersavail=0;
   try
   {
     if (argc < 2)

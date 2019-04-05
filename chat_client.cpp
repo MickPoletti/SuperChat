@@ -17,6 +17,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <unistd.h>
+#include <string>
 
 #include "asio.hpp"
 #include <ncurses.h>
@@ -26,6 +27,8 @@
 using asio::ip::tcp;
 
 typedef std::deque<chat_message> chat_message_queue;
+
+int aa=2,bb=2,cc=2,dd=2;
 
 class chat_client
 {
@@ -38,11 +41,16 @@ public:
     do_connect(endpoints);
   }
 
+
   void write(const chat_message& msg)
   {
+
+
     asio::post(io_context_,
         [this, msg]()
         {
+
+
           bool write_in_progress = !write_msgs_.empty();
           write_msgs_.push_back(msg);
           if (!write_in_progress)
@@ -67,15 +75,16 @@ public:
     return false;
   }
 
-  int startClient()
+  void startClient()
   {
+
+
   	int x, y;
   	int x1,y1;
 
    	initscr();
   	noecho();
-  	curs_set(FALSE);
-
+  	curs_set(2);
 
   	getmaxyx(stdscr, y,x);
   	WINDOW *lobby = newwin(y-5,x-25,0,0);
@@ -92,7 +101,6 @@ public:
   /*
   	while(1)
   	{
-
   	getmaxyx(stdscr,y1,x1);
   	if(y1!=y || x1!=x)
   	{
@@ -108,8 +116,6 @@ public:
   	wclear(display_users);
   	wclear(chat_rooms);
   	wclear(options);
-
-
   	}
   */
 
@@ -121,18 +127,18 @@ public:
   mvwprintw(options,0,0,"Options");
   refresh();
 
+
   wrefresh(lobby);
   wrefresh(display_users);
   wrefresh(chat_rooms);
   wrefresh(options);
   wrefresh(txt_field);
 
+//std::string input=getstring();
 
-
-
-    bool out = false;
+   // bool out = false;
     /* Loop through to get user requests */
-    while(out == false)
+/*    while(out == false)
     {
       char ch = getch();
       if(ch != '\n')
@@ -144,20 +150,17 @@ public:
         out = true;
       }
     }
+*/
+  	//sleep(10);
 
 
-  	sleep(10);
+  	//delwin(lobby);
+  	//delwin(txt_field);
+  	//delwin(display_users);
+  	//delwin(chat_rooms);
+  	//delwin(options);
 
-
-  	delwin(lobby);
-  	delwin(txt_field);
-  	delwin(display_users);
-  	delwin(chat_rooms);
-  	delwin(options);
-
-  	endwin();
-  	return 0;
-
+  	//endwin();
 
 
   }
@@ -412,7 +415,6 @@ public:
         return false;
       }
     }
-
     */
     return false;
   }
@@ -458,8 +460,14 @@ private:
         });
   }
 
+
+
+
+
+
   void do_read_header()
   {
+
     asio::async_read(socket_,
         asio::buffer(read_msg_.data(), chat_message::header_length),
         [this](std::error_code ec, std::size_t /*length*/)
@@ -475,16 +483,44 @@ private:
         });
   }
 
+
+
   void do_read_body()
   {
+
+move(aa,bb);
+aa++;
+
     asio::async_read(socket_,
         asio::buffer(read_msg_.body(), read_msg_.body_length()),
         [this](std::error_code ec, std::size_t /*length*/)
         {
           if (!ec)
           {
-            std::cout.write(read_msg_.body(), read_msg_.body_length());
-            std::cout << "\n";
+
+
+            //std::cout.write(read_msg_.body(), read_msg_.body_length());
+            //std::cout << "\n";
+
+		//std::ostream stream( NULL );
+		//stream.write(read_msg_.body(), read_msg_.body_length());
+		//std::ostringstream ss;
+
+		//ss<<stream.rdbuf();
+		//std::string output=ss.str();
+		//const char * c = output.c_str();
+
+		//char *X=(char*)malloc(read_msg_.body_length());
+		//strcpy(X,read_msg_.body());
+
+		  printw(read_msg_.body());
+		    //printw(X);
+
+		  //printw(c);
+		  move(48,2);
+		  //clrtobot();
+		  wclear(txt_field);
+		  refresh();
             do_read_header();
           }
           else
@@ -494,8 +530,12 @@ private:
         });
   }
 
+
+
   void do_write()
   {
+
+
     asio::async_write(socket_,
         asio::buffer(write_msgs_.front().data(),
           write_msgs_.front().length()),
@@ -503,6 +543,7 @@ private:
         {
           if (!ec)
           {
+
             write_msgs_.pop_front();
             if (!write_msgs_.empty())
             {
@@ -523,10 +564,21 @@ private:
   chat_message_queue write_msgs_;
   char username[11];
   char password[11];
+  WINDOW *lobby = newwin(y-5,x-25,0,0);
+  WINDOW *txt_field = newwin(5,x-25,y-5,0);
+  WINDOW *display_users = newwin(y-18,20,0,x-23);
+  WINDOW *chat_rooms = newwin(y-8,20,y-18,x-23);
+  WINDOW *options= newwin(5,20,y-5,x-23);
+  int x, y,a,b;
 };
+
+
+
 
 int main(int argc, char* argv[])
 {
+
+
 
   try
   {
@@ -543,24 +595,57 @@ int main(int argc, char* argv[])
     chat_client c(io_context, endpoints);
     c.login();
     c.startClient();
+
     std::thread t([&io_context](){ io_context.run(); });
 
-
-
+    nocbreak();
+    echo();
+    int ch;
 
     char line[chat_message::max_body_length + 1];
     char newline[chat_message::max_body_length + 1];
-    while (std::cin.getline(line, chat_message::max_body_length + 1))
+
+    //while (std::cin.getline(line, chat_message::max_body_length + 1))
+
+    std::ostringstream s1;
+    s1<<"****** :"<<c.get_username()<<"has enter the chatroom***********"<<std::flush;
+    std::string let=s1.str();
+    int size=let.length();
+    char line1[size-1];
+    strcpy(line1,let.c_str());
+
+    chat_message msg;
+    msg.body_length(std::strlen(line1));
+    std::memcpy(msg.body(), line1, msg.body_length());
+    msg.encode_header();
+    c.write(msg);
+    std::strcpy(newline, "");
+
+
+	move(48,2);
+
+	while(ch=getch())
+  {
+    std::string input;
+	  input.clear();
+	  while ( ch != '\n' )
     {
-      chat_message msg;
-      std::strcpy(newline, c.get_username());
-      std::strcat(newline, line);
-      msg.body_length(std::strlen(newline));
-      std::memcpy(msg.body(), newline, msg.body_length());
-      msg.encode_header();
-      c.write(msg);
-      std::strcpy(newline, "");
-    }
+      input.push_back( ch );
+      ch = getch();
+   	}
+	  strcpy(line, input.c_str());
+    chat_message msg;
+    std::strcpy(newline, c.get_username());
+    std::strcat(newline, line);
+    msg.body_length(std::strlen(newline));
+    std::memcpy(msg.body(), line, msg.body_length());
+    msg.encode_header();
+    c.write(msg);
+    std::strcpy(newline, "");
+	  input.clear();
+    move(48,2);
+    clrtoeol();
+  }
 
     c.close();
     t.join();
