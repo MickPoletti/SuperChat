@@ -80,7 +80,7 @@ public:
 
 
   	int x, y;
-  	int x1,y1;
+  	//int x1,y1;
 
    	initscr();
   	noecho();
@@ -276,7 +276,7 @@ public:
           {
             if(strcmp(choice, "Y") == 0)
             {
-              int i;
+              unsigned int i=0;
               for(i=0; i<=strlen(tempUser); i++){
                 username[i] = tempUser[i];
               }
@@ -297,7 +297,7 @@ public:
             {
               if(verify(tempUser, tempPassword))
               {
-                int i;
+                unsigned int i =0;
                 for(i=0; i<=strlen(tempUser); i++){
                   username[i] = tempUser[i];
                 }
@@ -624,7 +624,7 @@ int main(int argc, char* argv[])
 
 	move(48,2);
 
-	while(ch=getch())
+	while((ch=getch()))
   {
     std::string input;
 	  input.clear();
