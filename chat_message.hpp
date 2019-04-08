@@ -14,6 +14,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
+#include <string>
+#include <ncurses.h>
 
 class chat_message
 {
@@ -31,6 +34,7 @@ public:
   {
     return data_;
   }
+
 
   char* data()
   {
@@ -51,6 +55,7 @@ public:
   {
     return data_ + header_length;
   }
+
 
   std::size_t body_length() const
   {
@@ -83,6 +88,7 @@ public:
     std::sprintf(header, "%4d", static_cast<int>(body_length_));
     std::memcpy(data_, header, header_length);
   }
+
 
 private:
   char data_[header_length + max_body_length];
