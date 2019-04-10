@@ -135,7 +135,6 @@ void RecvFile(int sock, const char* filename)
   void write(const chat_message& msg)
   {
 
-
     asio::post(io_context_,
         [this, msg]()
         {
@@ -374,7 +373,18 @@ void RecvFile(int sock, const char* filename)
       userOut.close();
     }
 
-
+    std::string usernameMessage;
+    usernameMessage = "username::";
+    usernameMessage += get_username();
+    char charUsernameMessage[usernameMessage.length()+1];
+    charUsernameMessage[0] = '\0';
+    std::strcat(charUsernameMessage, usernameMessage.c_str());
+    chat_message user;
+    user.body_length(std::strlen(charUsernameMessage));
+    std::memcpy(user.body(), charUsernameMessage, user.body_length());
+    user.encode_header();
+    write(user);
+    std::memcpy(user.body(), "\0", strlen("\0"));
     std::strcat(username, ": ");
 
   }
@@ -494,11 +504,15 @@ private:
         {
           if (!ec)
           {
-		        wprintw(getWindow(), read_msg_.body());
+            do_read_header();
+            chat_message test;
+            test.body_length(read_msg_.body_length());
+            std::memcpy(test.body(), read_msg_.body(), read_msg_.body_length());
+		        wprintw(getWindow(), test.body());
             wprintw(getWindow(), "\n");
             wrefresh(getWindow());
             //refresh();
-            do_read_header();
+
           }
           else
           {
@@ -619,27 +633,27 @@ int main(int argc, char* argv[])
     s1 += c.get_username();
     s1 += " has entered the chatroom **********";
     c.setWindow(lobby);
-    char line1[std::strlen(s1.c_str())] = {0};
-
-    std::memcpy(line1, s1.c_str(), std::strlen(s1.c_str()) );
-
+    char line1[s1.length()+1];
+    line1[0] = '\0';
+    std::strcat(line1, s1.c_str());
     chat_message msg;
     msg.body_length(std::strlen(line1));
     std::memcpy(msg.body(), line1, msg.body_length());
     msg.encode_header();
     c.write(msg);
+    std::memcpy(msg.body(), "\0", strlen("\0"));
+
 
   bool run = true;
-  char xd;
+  char xd = '\0';
   while(run)
   {
     xd = wgetch(txt_field);
-    char meme[chat_message::max_body_length+1];
-    meme[0] = '\0';
+    char meme[chat_message::max_body_length+1] = {0};
     std::string message;
     chat_message msg1;
     message.push_back(xd);
-    strcpy(meme, message.c_str());
+    std::strcat(meme, message.c_str());
     mvwprintw(txt_field, 0,0, meme);
     while(xd != '\n')
     {
@@ -665,10 +679,12 @@ int main(int argc, char* argv[])
     }
     if(message.front() == '\n')
     {
-      //Do nothing
+      message.clear();
     }
     else
     {
+    message.pop_back();
+
     message.insert(0, c.get_username());
     strcpy(meme, message.c_str());
     msg1.body_length(std::strlen(meme));
@@ -682,6 +698,7 @@ int main(int argc, char* argv[])
     wrefresh(txt_field);
     wrefresh(lobby);
     message.clear();
+    std::memcpy(msg1.body(), "\0", strlen("\0"));
     }
     }
     delwin(lobby);
