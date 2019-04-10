@@ -508,9 +508,16 @@ private:
             chat_message test;
             test.body_length(read_msg_.body_length());
             std::memcpy(test.body(), read_msg_.body(), read_msg_.body_length());
+            if(std::strstr(test.body(), "username::"))
+            {
+              //don't print
+            }
+            else
+            {
 		        wprintw(getWindow(), test.body());
             wprintw(getWindow(), "\n");
             wrefresh(getWindow());
+            }
             //refresh();
 
           }
@@ -576,7 +583,6 @@ int main(int argc, char* argv[])
 
     chat_client c(io_context, endpoints);
     c.login();
-    std::thread t([&io_context](){ io_context.run(); });
     int x, y;
 
    	initscr();
@@ -626,7 +632,8 @@ int main(int argc, char* argv[])
   	wrefresh(display_users);
   	wrefresh(chat_rooms);
   	wrefresh(options);
-
+    
+    std::thread t([&io_context](){ io_context.run(); });
 
     std::string s1;
     s1 = "*****";

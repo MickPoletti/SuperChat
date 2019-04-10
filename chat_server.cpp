@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <deque>
+#include <fstream>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -38,7 +39,6 @@ class chat_participant
 public:
   virtual ~chat_participant() {}
   virtual void deliver(const chat_message& msg) = 0;
-  char userID[100];
 };
 
 typedef std::shared_ptr<chat_participant> chat_participant_ptr;
@@ -251,6 +251,17 @@ private:
         {
           if (!ec)
           {
+            chat_message username;
+            username.body_length(read_msg_.body_length());
+            std::memcpy(username.body(), read_msg_.body(), read_msg_.body_length());
+            if(std::strstr(username.body(), "username::"))
+            {
+              char userID[100] = {0};
+              std::strcpy(userID, username.body());
+              std::ofstream userOut("userIDs.txt", std::ios::app);
+              std::strcpy(userID, &userID[10]);
+              userOut << userID;
+            }
             room_.deliver(read_msg_);
             do_read_header();
           }
@@ -289,6 +300,7 @@ private:
   chat_room& room_;
   chat_message read_msg_;
   chat_message_queue write_msgs_;
+  char usernames[500] = {0};
 };
 
 //----------------------------------------------------------------------
