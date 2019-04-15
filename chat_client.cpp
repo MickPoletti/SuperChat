@@ -5,7 +5,7 @@
 // Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+// file LICENSE_1_0.txt or copy at http://wwc.boost.org/LICENSE_1_0.txt)
 //
 
 
@@ -42,6 +42,18 @@ public:
   {
     do_connect(endpoints);
   }
+
+  WINDOW *lobbybox;
+  WINDOW *txt_fieldbox;
+  WINDOW *display_usersbox;
+  WINDOW *chat_roomsbox;
+  WINDOW *optionsbox;
+
+  WINDOW *lobby;
+  WINDOW *txt_field;
+  WINDOW *display_users;
+  WINDOW *chat_rooms;
+  WINDOW *options;
 
 int write_all(FILE *file, const void *buf, int len)
 {
@@ -465,6 +477,55 @@ void RecvFile(int sock, const char* filename)
   	return str;
   }
 
+  void mainWindow()
+  {
+    int x, y;
+
+    initscr();
+    noecho();
+    cbreak();
+    refresh();
+    curs_set(FALSE);
+
+    getmaxyx(stdscr, y,x);
+    lobbybox = newwin(y-5,x-25,0,0);
+    txt_fieldbox = newwin(5,x-25,y-5,0);
+    display_usersbox = newwin(y-18,20,0,x-23);
+    chat_roomsbox = newwin(y-8,20,y-18,x-23);
+
+    lobby = newwin(y-7,x-27,1,1);
+    txt_field = newwin(3,x-29,y-4,2);
+    display_users = newwin(y-20,18,1,x-22);
+    chat_rooms = newwin(y-12,20,y-17,x-22);
+
+
+
+    scrollok(lobby, TRUE);
+    scrollok(txt_field, TRUE);
+    scrollok(display_users, TRUE);
+    box(lobbybox,0,0);
+    box(txt_fieldbox,0,0);
+    box(display_usersbox,0,0);
+    box(chat_roomsbox,0,0);
+
+
+    mvwprintw(lobbybox,0,0,"LOBBY");
+    mvwprintw(txt_fieldbox,0,0,"TEXT FIELD");
+    mvwprintw(display_usersbox,0,0,"Online users");
+    mvwprintw(chat_roomsbox,0,0,"Chat Rooms");
+
+
+    wrefresh(lobbybox);
+    wrefresh(txt_fieldbox);
+    wrefresh(display_usersbox);
+    wrefresh(chat_roomsbox);
+    wrefresh(lobby);
+    wrefresh(txt_field);
+    wrefresh(display_users);
+    wrefresh(chat_rooms);
+
+  }
+
 private:
   void do_connect(const tcp::resolver::results_type& endpoints)
   {
@@ -512,11 +573,21 @@ private:
             {
               //don't print
             }
+            else if(std::strstr(test.body(), "fromserver:"))
+            {
+              std::string users(test.body());
+              users = users.substr(users.find(':') + 1);
+              char *ok = new char[users.length() + 1];
+              std::strcpy(ok, users.c_str());
+              wprintw(display_users, ok);
+              wrefresh(display_users);
+              delete ok;
+            }
             else
             {
-		        wprintw(getWindow(), test.body());
-            wprintw(getWindow(), "\n");
-            wrefresh(getWindow());
+		        wprintw(lobby, test.body());
+            wprintw(lobby, "\n");
+            wrefresh(lobby);
             }
             //refresh();
 
@@ -566,6 +637,7 @@ private:
   WINDOW* window;
 };
 
+
 int main(int argc, char* argv[])
 {
   try
@@ -583,63 +655,14 @@ int main(int argc, char* argv[])
 
     chat_client c(io_context, endpoints);
     c.login();
-    int x, y;
+    c.mainWindow();
 
-   	initscr();
-  	noecho();
-  	cbreak();
-    refresh();
-  	curs_set(FALSE);
-
-
-  	getmaxyx(stdscr, y,x);
-  	WINDOW *lobbybox = newwin(y-5,x-25,0,0);
-  	WINDOW *txt_fieldbox = newwin(5,x-25,y-5,0);
-  	WINDOW *display_usersbox = newwin(y-18,20,0,x-23);
-  	WINDOW *chat_roomsbox = newwin(y-8,20,y-18,x-23);
-  	WINDOW *optionsbox = newwin(5,20,y-5,x-23);
-
-  	WINDOW *lobby = newwin(y-7,x-27,1,1);
-  	WINDOW *txt_field = newwin(3,x-29,y-4,2);
-  	WINDOW *display_users = newwin(y-20,18,1,x-22);
-  	WINDOW *chat_rooms = newwin(y-12,18,y-17,x-22);
-  	WINDOW *options = newwin(3,18,y-4,x-22);
-
-  	scrollok(lobby, TRUE);
-  	scrollok(txt_field, TRUE);
-  	scrollok(display_users, TRUE);
-  	box(lobbybox,0,0);
-  	box(txt_fieldbox,0,0);
-  	box(display_usersbox,0,0);
-  	box(chat_roomsbox,0,0);
-  	box(optionsbox,0,0);
-
-
-  	mvwprintw(lobbybox,0,0,"LOBBY");
-  	mvwprintw(txt_fieldbox,0,0,"TEXT FIELD");
-  	mvwprintw(display_usersbox,0,0,"Online users");
-  	mvwprintw(chat_roomsbox,0,0,"Chat Rooms");
-  	mvwprintw(optionsbox,0,0,"Options");
-
-
-  	wrefresh(lobbybox);
-  	wrefresh(txt_fieldbox);
-  	wrefresh(display_usersbox);
-  	wrefresh(chat_roomsbox);
-  	wrefresh(optionsbox);
-  	wrefresh(lobby);
-  	wrefresh(txt_field);
-  	wrefresh(display_users);
-  	wrefresh(chat_rooms);
-  	wrefresh(options);
-    
     std::thread t([&io_context](){ io_context.run(); });
 
     std::string s1;
     s1 = "*****";
     s1 += c.get_username();
     s1 += " has entered the chatroom **********";
-    c.setWindow(lobby);
     char line1[s1.length()+1];
     line1[0] = '\0';
     std::strcat(line1, s1.c_str());
@@ -655,24 +678,24 @@ int main(int argc, char* argv[])
   char xd = '\0';
   while(run)
   {
-    xd = wgetch(txt_field);
+    xd = wgetch(c.txt_field);
     char meme[chat_message::max_body_length+1] = {0};
     std::string message;
     chat_message msg1;
     message.push_back(xd);
     std::strcat(meme, message.c_str());
-    mvwprintw(txt_field, 0,0, meme);
+    mvwprintw(c.txt_field, 0,0, meme);
     while(xd != '\n')
     {
-      xd = wgetch(txt_field);
+      xd = wgetch(c.txt_field);
       if(xd == 127 || xd==8)
       {
         if(!message.empty())
         {
           int y,x;
-          getyx(txt_field, y,x);
+          getyx(c.txt_field, y,x);
           x-=1;
-          mvwdelch(txt_field, y, x);
+          mvwdelch(c.txt_field, y, x);
           message.pop_back();
         }
       }
@@ -680,8 +703,8 @@ int main(int argc, char* argv[])
       {
         message.push_back(xd);
         strcpy(meme, message.c_str());
-        mvwprintw(txt_field, 0,0, meme);
-        wrefresh(txt_field);
+        mvwprintw(c.txt_field, 0,0, meme);
+        wrefresh(c.txt_field);
       }
     }
     if(message.front() == '\n')
@@ -700,19 +723,19 @@ int main(int argc, char* argv[])
     c.write(msg1);
 
     //wprintw(lobby, meme);
-    wmove(txt_field, 0,0);
-    wclrtobot(txt_field);
-    wrefresh(txt_field);
-    wrefresh(lobby);
+    wmove(c.txt_field, 0,0);
+    wclrtobot(c.txt_field);
+    wrefresh(c.txt_field);
+    wrefresh(c.lobby);
     message.clear();
     std::memcpy(msg1.body(), "\0", strlen("\0"));
     }
     }
-    delwin(lobby);
-    delwin(txt_field);
-    delwin(display_users);
-    delwin(chat_rooms);
-    delwin(options);
+    delwin(c.lobby);
+    delwin(c.txt_field);
+    delwin(c.display_users);
+    delwin(c.chat_rooms);
+    delwin(c.options);
 
     endwin();
     c.close();
