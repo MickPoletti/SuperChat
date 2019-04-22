@@ -41,6 +41,7 @@ public:
       socket_(io_context)
   {
     do_connect(endpoints);
+    std::strcpy(chatroom_name, "Lobby");
   }
 
   WINDOW *lobbybox;
@@ -54,95 +55,6 @@ public:
   WINDOW *display_users;
   WINDOW *chat_rooms;
   WINDOW *options;
-
-int write_all(FILE *file, const void *buf, int len)
-{
-    const char *pbuf = (const char *) buf;
-
-    while (len > 0)
-    {
-        int written = fwrite(pbuf, 1, len, file);
-        if (written < 1)
-        {
-            printf("Can't write to file");
-            return -1;
-        }
-
-        pbuf += written;
-        len -= written;
-    }
-
-    return 0;
-}
-
-int read_all(int sock, void *buf, int len)
-{
-    char *pbuf = (char *) buf;
-    int total = 0;
-
-    while (len > 0)
-    {
-        int rval = recv(sock, pbuf, len, 0);
-        if (rval < 0)
-        {
-            // if the socket is non-blocking, then check
-            // the socket error for WSAEWOULDBLOCK/EAGAIN
-            // (depending on platform) and if true then
-            // use select() to wait for a small period of
-            // time to see if the socket becomes readable
-            // again before failing the transfer...
-
-            printf("Can't read from socket");
-            return -1;
-        }
-
-        if (rval == 0)
-        {
-            printf("Socket disconnected");
-            return 0;
-        }
-
-        pbuf += rval;
-        len -= rval;
-        total += rval;
-    }
-
-    return total;
-}
-
-void RecvFile(int sock, const char* filename)
-{
-    int rval;
-    char buf[0x1000];
-
-    FILE *file = fopen(filename, "wb");
-    if (!file)
-    {
-        printf("Can't open file for writing");
-        return;
-    }
-
-    // if you need to handle files > 2GB,
-    // be sure to use a 64bit integer, and
-    // a network-to-host function that can
-    // handle 64bit integers...
-    long size = 0;
-    if (read_all(sock, &size, sizeof(size)) == 1)
-    {
-        size = ntohl(size);
-        while (size > 0)
-        {
-            rval = read_all(sock, buf, size);
-            if (rval < 1)
-                break;
-
-            if (write_all(file, buf, rval) == -1)
-                break;
-        }
-    }
-
-    fclose(file);
-}
 
   void write(const chat_message& msg)
   {
@@ -172,16 +84,6 @@ void RecvFile(int sock, const char* filename)
         return true;
     }
     return false;
-  }
-
-  void setWindow(WINDOW* sentWindow)
-  {
-    window = sentWindow;
-  }
-
-  WINDOW* getWindow()
-  {
-    return window;
   }
 
   void make_login()
@@ -363,6 +265,55 @@ void RecvFile(int sock, const char* filename)
     endwin();
   }
 
+  void mainWindow()
+  {
+    int x, y;
+
+    initscr();
+    noecho();
+    cbreak();
+    refresh();
+    curs_set(FALSE);
+
+    getmaxyx(stdscr, y,x);
+    lobbybox = newwin(y-5,x-25,0,0);
+    txt_fieldbox = newwin(5,x-25,y-5,0);
+    display_usersbox = newwin(y-15,20,0,x-23);
+    chat_roomsbox = newwin(y-9,20,y-15,x-23);
+
+    lobby = newwin(y-7,x-27,1,1);
+    txt_field = newwin(3,x-29,y-4,2);
+    display_users = newwin(y-17,18,1,x-22);
+    chat_rooms = newwin(y-11,18,y-14,x-22);
+
+
+
+    scrollok(lobby, TRUE);
+    scrollok(txt_field, TRUE);
+    scrollok(display_users, TRUE);
+    box(lobbybox,0,0);
+    box(txt_fieldbox,0,0);
+    box(display_usersbox,0,0);
+    box(chat_roomsbox,0,0);
+
+
+    mvwprintw(lobbybox,0,0,"LOBBY");
+    mvwprintw(txt_fieldbox,0,0,"TEXT FIELD");
+    mvwprintw(display_usersbox,0,0,"Online users");
+    mvwprintw(chat_roomsbox,0,0,"Chat Rooms");
+
+
+    wrefresh(lobbybox);
+    wrefresh(txt_fieldbox);
+    wrefresh(display_usersbox);
+    wrefresh(chat_roomsbox);
+    wrefresh(lobby);
+    wrefresh(txt_field);
+    wrefresh(display_users);
+    wrefresh(chat_rooms);
+
+  }
+
   void login()
   {
     username[0] = '\0';
@@ -384,7 +335,12 @@ void RecvFile(int sock, const char* filename)
       userOut << username << " " << password;
       userOut.close();
     }
-
+    if(strcmp(username, "Mick") == 0)
+    {
+      addAdmin(username);
+    }
+    else
+    {
     std::string usernameMessage;
     usernameMessage = "username::";
     usernameMessage += get_username();
@@ -392,13 +348,18 @@ void RecvFile(int sock, const char* filename)
     charUsernameMessage[0] = '\0';
     std::strcat(charUsernameMessage, usernameMessage.c_str());
     chat_message user;
+    char serverIsUser[6] = {0};
+    std::strcpy(serverIsUser, "server");
+    user.make_username(serverIsUser);
+    user.set_chatname_current(chatroom_name);
+    user.set_chatname_new(chatroom_name);
+    user.set_cmd(0);
     user.body_length(std::strlen(charUsernameMessage));
     std::memcpy(user.body(), charUsernameMessage, user.body_length());
     user.encode_header();
     write(user);
     std::memcpy(user.body(), "\0", strlen("\0"));
-    std::strcat(username, ": ");
-
+    }
   }
 
   bool test(std::ifstream& userIn)
@@ -449,6 +410,59 @@ void RecvFile(int sock, const char* filename)
     return false;
   }
 
+  void set_chatname(char* name)
+  {
+    std::strcpy(chatroom_name, name);
+  }
+
+  char* get_server_response()
+  {
+    return chatroom_name;
+  }
+
+  void addAdmin(char* username)
+  {
+    listofAdmins.push_back(username);
+  }
+
+  bool isAdmin(char* username)
+  {
+    if(std::find(listofAdmins.begin(), listofAdmins.end(), username) != listofAdmins.end())
+    {
+      return true;
+    }
+    return false;
+  }
+
+  void block(char* usern)
+  {
+    for(int i = 0; i<200; i++)
+    {
+      if(blocked_users[i] == NULL)
+      {
+        blocked_users[i] = (char*)malloc((std::strlen(usern)+1)*sizeof(char));
+        std::strcpy(blocked_users[i], usern);
+        wprintw(lobby, blocked_users[i]);
+        break;
+      }
+    }
+  }
+
+  bool isBlocked(char* usern)
+  {
+    for(int i = 0; i<200; i++)
+    {
+      if(blocked_users[i] != NULL)
+      {
+        if(std::strstr(blocked_users[i], usern))
+        {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   char* get_username()
   {
     return username;
@@ -477,54 +491,6 @@ void RecvFile(int sock, const char* filename)
   	return str;
   }
 
-  void mainWindow()
-  {
-    int x, y;
-
-    initscr();
-    noecho();
-    cbreak();
-    refresh();
-    curs_set(FALSE);
-
-    getmaxyx(stdscr, y,x);
-    lobbybox = newwin(y-5,x-25,0,0);
-    txt_fieldbox = newwin(5,x-25,y-5,0);
-    display_usersbox = newwin(y-18,20,0,x-23);
-    chat_roomsbox = newwin(y-8,20,y-18,x-23);
-
-    lobby = newwin(y-7,x-27,1,1);
-    txt_field = newwin(3,x-29,y-4,2);
-    display_users = newwin(y-20,18,1,x-22);
-    chat_rooms = newwin(y-12,20,y-17,x-22);
-
-
-
-    scrollok(lobby, TRUE);
-    scrollok(txt_field, TRUE);
-    scrollok(display_users, TRUE);
-    box(lobbybox,0,0);
-    box(txt_fieldbox,0,0);
-    box(display_usersbox,0,0);
-    box(chat_roomsbox,0,0);
-
-
-    mvwprintw(lobbybox,0,0,"LOBBY");
-    mvwprintw(txt_fieldbox,0,0,"TEXT FIELD");
-    mvwprintw(display_usersbox,0,0,"Online users");
-    mvwprintw(chat_roomsbox,0,0,"Chat Rooms");
-
-
-    wrefresh(lobbybox);
-    wrefresh(txt_fieldbox);
-    wrefresh(display_usersbox);
-    wrefresh(chat_roomsbox);
-    wrefresh(lobby);
-    wrefresh(txt_field);
-    wrefresh(display_users);
-    wrefresh(chat_rooms);
-
-  }
 
 private:
   void do_connect(const tcp::resolver::results_type& endpoints)
@@ -546,9 +512,22 @@ private:
         asio::buffer(read_msg_.data(), chat_message::header_length),
         [this](std::error_code ec, std::size_t /*length*/)
         {
-          if (!ec && read_msg_.decode_header())
+          if (!ec && read_msg_.decode_header() && read_msg_.decode_command() == 0)
           {
+
             do_read_body();
+          }
+          else if(!ec && read_msg_.decode_header() && read_msg_.decode_command() == 3)
+          {
+            if(std::strcmp(chatroom_name, read_msg_.decode_chatname_new()) != 0)
+            {
+              std::strcpy(chatroom_name, read_msg_.decode_chatname_old());
+              do_read_body();
+            }
+            else
+            {
+              do_read_header();
+            }
           }
           else
           {
@@ -563,9 +542,11 @@ private:
         asio::buffer(read_msg_.body(), read_msg_.body_length()),
         [this](std::error_code ec, std::size_t /*length*/)
         {
-          if (!ec)
+          char arr[11] = {0};
+          strcpy(arr, read_msg_.decode_user());
+          if (!ec && (isBlocked(arr) != true))
           {
-            do_read_header();
+            char *chatroomarray = {0};
             chat_message test;
             test.body_length(read_msg_.body_length());
             std::memcpy(test.body(), read_msg_.body(), read_msg_.body_length());
@@ -579,18 +560,45 @@ private:
               users = users.substr(users.find(':') + 1);
               char *ok = new char[users.length() + 1];
               std::strcpy(ok, users.c_str());
-              wprintw(display_users, ok);
+              mvwprintw(display_users, 0,0, ok);
               wrefresh(display_users);
               delete ok;
+            }
+            else if(std::strstr(test.body(), "chatroom:"))
+            {
+              /*
+              std::string chatroom(test.body());
+              chatroom = chatroom.substr(chatroom.find(':') + 1);
+              char *ok = new char[chatroom.length() + 1];
+              std::strcpy(ok, chatroom.c_str());
+              //find a way to compare rooms
+              if(strstr(ok, chatroomarray))
+              {
+
+              }
+              else
+              {
+                std::strcat(chatroomarray, ok);
+                wprintw(chat_rooms, ok);
+                wrefresh(chat_rooms);
+                delete ok;
+              }
+              */
             }
             else
             {
 		        wprintw(lobby, test.body());
             wprintw(lobby, "\n");
             wrefresh(lobby);
+
             }
+            do_read_header();
             //refresh();
 
+          }
+          else if(!ec)
+          {
+            do_read_header();
           }
           else
           {
@@ -633,6 +641,9 @@ private:
   chat_message_queue write_msgs_;
   char username[11];
   char password[11];
+  char chatroom_name[20];
+  char* blocked_users[200] = {0};
+  std::vector<std::string> listofAdmins;
   int x, y,a,b;
   WINDOW* window;
 };
@@ -659,6 +670,10 @@ int main(int argc, char* argv[])
 
     std::thread t([&io_context](){ io_context.run(); });
 
+    int chat_room_number = 0;
+    char chatroom_name[20] = "Lobby";
+    std::string return_str="";
+
     std::string s1;
     s1 = "*****";
     s1 += c.get_username();
@@ -667,6 +682,13 @@ int main(int argc, char* argv[])
     line1[0] = '\0';
     std::strcat(line1, s1.c_str());
     chat_message msg;
+    chat_message user;
+    char serverIsUser[6] = {0};
+    std::strcpy(serverIsUser, "server");
+    msg.set_chatname_current(chatroom_name);
+    msg.set_chatname_new(chatroom_name);
+    msg.make_username(serverIsUser);
+    msg.set_cmd(0);
     msg.body_length(std::strlen(line1));
     std::memcpy(msg.body(), line1, msg.body_length());
     msg.encode_header();
@@ -715,13 +737,89 @@ int main(int argc, char* argv[])
     {
     message.pop_back();
 
-    message.insert(0, c.get_username());
+    if(message.find("/help") != std::string::npos)
+    {
+      char helpMessage[500] = {0};
+      std::strcat(helpMessage, "-----Help Menu-----\n");
+      std::strcat(helpMessage, "/create <roomname>  -- Creates a room with the given roomname.\n");
+      std::strcat(helpMessage, "/delete <roomname> -- Deletes a given room with a given roomname.\n");
+      std::strcat(helpMessage, "/block <username> -- Blocks the user entered from speaking in chat (admin only).\n");
+      std::strcat(helpMessage, "/goto <roomname> -- Magically transports you to the chat room of your choosing!\n");
+      std::strcat(helpMessage, "-------------------\n");
+
+      wprintw(c.lobby, helpMessage);
+    }
+    else if(message.find("/create") != std::string::npos)
+    {
+      //create the new chatroom
+      char new_name[100] = {0};
+      std::string snew_name = message.substr(message.find(' ') + 1);
+      chat_message msg;
+      msg.body_length(0);
+      msg.set_chatname_current(chatroom_name);
+      std::strcpy(chatroom_name, snew_name.c_str());
+      msg.set_chatname_new(chatroom_name);
+      msg.set_cmd(2);
+      msg.encode_header();
+      c.set_chatname(chatroom_name);
+      c.write(msg);
+      wclear(c.lobby);
+      wrefresh(c.lobby);
+    }
+    else if(message.find("/delete") != std::string::npos)
+    {
+      //delete the chatroom
+      char deleted[100] = {0};
+      std::string sdeleted = message.substr(message.find(' ') + 1);
+      std::strcpy(deleted, sdeleted.c_str());
+      chat_message msg;
+      msg.body_length(0);
+      msg.set_chatname_current(chatroom_name);
+      msg.set_chatname_new(deleted);
+      msg.set_cmd(3);
+      msg.encode_header();
+      c.set_chatname(chatroom_name);
+      c.write(msg);
+    }
+    else if(message.find("/block") != std::string::npos)
+    {
+      //if the user is an admin then block the user
+      char blockeduser[100] = {0};
+      std::string sblockedUser = message.substr(message.find(' ') + 1);
+      std::strcat(blockeduser, sblockedUser.c_str());
+      c.block(blockeduser);
+      wprintw(c.lobby, " has been blocked!\n");
+    }
+    else if(message.find("/goto") != std::string::npos)
+    {
+      //goto the room
+      char the_room[100] = {0};
+      std::string sthe_room = message.substr(message.find(' ') + 1);
+      chat_message msg;
+      msg.body_length(0);
+      msg.set_chatname_current(chatroom_name);
+      std::strcpy(chatroom_name, sthe_room.c_str());
+      msg.set_chatname_new(chatroom_name);
+      msg.set_cmd(1);
+      msg.encode_header();
+      c.set_chatname(chatroom_name);
+      c.write(msg);
+    }
+    else{
+    char addendum[] = {0};
+    strcpy(addendum, c.get_username());
+    strcat(addendum, ": ");
+    message.insert(0, addendum);
     strcpy(meme, message.c_str());
+    msg1.make_username(c.get_username());
+    msg1.set_cmd(0);
+    msg1.set_chatname_current(chatroom_name);
+    msg1.set_chatname_new(chatroom_name);
     msg1.body_length(std::strlen(meme));
     std::memcpy(msg1.body(), meme, msg1.body_length());
     msg1.encode_header();
     c.write(msg1);
-
+    }
     //wprintw(lobby, meme);
     wmove(c.txt_field, 0,0);
     wclrtobot(c.txt_field);
