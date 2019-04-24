@@ -72,7 +72,6 @@ public:
   {
     int new_room_number = -1;
     int old_room_number = -1;
-    int happened = 0;
 
     for(int i=0; i< 10; i++)
     {
@@ -81,7 +80,6 @@ public:
         if(strcmp(new_name, chat_room_names[i]) == 0)
         {
           new_room_number = i;
-          happened = 1;
         }
         if(strcmp(old_name, chat_room_names[i]) == 0)
         {
@@ -89,14 +87,6 @@ public:
         }
       }
     }
-    /*
-    if(happened < 1)
-    {
-      printf("Error: chatroom %s does not exist.\n", new_name);
-      //leave(participant, new_room_number);
-      //join(participant, old_room_number);
-      return;
-    }*/
 
     if(new_room_number != -1 && old_room_number != -1)
     {
@@ -224,6 +214,7 @@ public:
     //std::memcpy(xd.body(), "Hello user", std::strlen("Hello  user"));
     //xd.encode_header();
     //participant->deliver(xd);
+    chatroom_display();
     participants_[chat_room_number].insert(participant);
     for(auto msg: recent_msgs_[chat_room_number])
     {
@@ -234,7 +225,7 @@ public:
       usersavail++;
       availability(usersavail);
     }
-    chatroom_display();
+
   }
 
   void rejoin(chat_participant_ptr participant, int chat_room_number)
@@ -299,8 +290,9 @@ public:
     av.body_length(std::strlen(message));
     std::memcpy(av.body(), message , av.body_length());
     av.encode_header();
-    deliver(av, "Lobby");
-
+    char lobbymessage[20] = "Lobby";
+    deliver(av, lobbymessage);
+    chatroom_display();
 
 
     std::cout<<"Users available: "<<a<<std::flush<<'\r';
@@ -473,7 +465,7 @@ private:
           if(strcmp(output, read_msg_.decode_chatname_new()) == 0)
           {
             chat_message msg;
-            char* error = "Error entering room, returning to previous room.";
+            char error[55] = "Error entering room, returning to previous room.\0";
             msg.body_length(std::strlen(error));
             std::memcpy(msg.body(), error, std::strlen(error));
             msg.set_chatname_current(output);
@@ -498,7 +490,7 @@ private:
           if(strcmp(output, read_msg_.decode_chatname_new()) == 0)
           {
             chat_message msg;
-            char* error = "sMDError entering room, returning to previous room.";
+            char error[55] = "sMDError entering room, returning to previous room.\0";
             //msg.set_roomname_old(read_msg_.decode_roomname_old());
             msg.body_length(std::strlen(error));
             std::memcpy(msg.body(), error, std::strlen(error));

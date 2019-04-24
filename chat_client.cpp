@@ -542,11 +542,12 @@ private:
         asio::buffer(read_msg_.body(), read_msg_.body_length()),
         [this](std::error_code ec, std::size_t /*length*/)
         {
+          int printed = 1;
           char arr[11] = {0};
+          std::string chatroomarray = "Lobby";
           strcpy(arr, read_msg_.decode_user());
           if (!ec && (isBlocked(arr) != true))
           {
-            char *chatroomarray = {0};
             chat_message test;
             test.body_length(read_msg_.body_length());
             std::memcpy(test.body(), read_msg_.body(), read_msg_.body_length());
@@ -566,24 +567,32 @@ private:
             }
             else if(std::strstr(test.body(), "chatroom:"))
             {
-              /*
               std::string chatroom(test.body());
               chatroom = chatroom.substr(chatroom.find(':') + 1);
               char *ok = new char[chatroom.length() + 1];
               std::strcpy(ok, chatroom.c_str());
               //find a way to compare rooms
-              if(strstr(ok, chatroomarray))
+              if(chatroomarray.find(ok) != std::string::npos)
               {
 
+                if(printed == 1)
+                {
+                  wprintw(chat_rooms, ok);
+                  wprintw(chat_rooms, "\n");
+                  wrefresh(chat_rooms);
+                  delete ok;
+                  printed++;
+                }
               }
               else
               {
-                std::strcat(chatroomarray, ok);
+                chatroomarray + ok + " ";
                 wprintw(chat_rooms, ok);
+                wprintw(chat_rooms, "\n");
                 wrefresh(chat_rooms);
                 delete ok;
               }
-              */
+              chatroom.clear();
             }
             else
             {
@@ -670,9 +679,9 @@ int main(int argc, char* argv[])
 
     std::thread t([&io_context](){ io_context.run(); });
 
-    int chat_room_number = 0;
     char chatroom_name[20] = "Lobby";
     std::string return_str="";
+
 
     std::string s1;
     s1 = "*****";
@@ -752,7 +761,6 @@ int main(int argc, char* argv[])
     else if(message.find("/create") != std::string::npos)
     {
       //create the new chatroom
-      char new_name[100] = {0};
       std::string snew_name = message.substr(message.find(' ') + 1);
       chat_message msg;
       msg.body_length(0);
@@ -793,7 +801,6 @@ int main(int argc, char* argv[])
     else if(message.find("/goto") != std::string::npos)
     {
       //goto the room
-      char the_room[100] = {0};
       std::string sthe_room = message.substr(message.find(' ') + 1);
       chat_message msg;
       msg.body_length(0);

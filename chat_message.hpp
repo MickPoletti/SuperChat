@@ -74,14 +74,14 @@ public:
   }
 
 
-  void set_crn(int crn)
-  {
-    chat_room_number = crn;
-  }
-
   void set_nrn(int nrn)
   {
     new_room_number = nrn;
+  }
+
+  void set_crn(int crn)
+  {
+    chat_room_number = crn;
   }
 
   void set_cmd(int cmd)
@@ -201,13 +201,13 @@ public:
 
 
 private:
-  int chat_room_number;
-  int new_room_number;
-  int command;
   std::size_t body_length_;
+  int new_room_number;
+  int chat_room_number;
+  int command;
+  char username[11];
   char chatname_new[21];
   char chatname_old[21];
-  char username[11];
   char data_[header_length + max_body_length] = {0};
 
 };
