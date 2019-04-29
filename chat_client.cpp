@@ -32,6 +32,7 @@ using asio::ip::tcp;
 
 typedef std::deque<chat_message> chat_message_queue;
 
+
 class chat_client
 {
 public:
@@ -55,6 +56,174 @@ public:
   WINDOW *display_users;
   WINDOW *chat_rooms;
   WINDOW *options;
+
+  void Dictionary()
+{//////////////////////////////////////////////////////////////////////////////////////////mason
+
+    FILE* fp;
+    fp = fopen("dictionary.txt", "r");
+    char buffer[100];
+    fgets(buffer, 100, (FILE*)fp);
+    size = std::atoi(buffer);
+    int i=0;
+    dictionary = (char**)malloc(size*sizeof(char*));
+    //printf("Made it here.\n");
+    while(fgets(buffer, 100, (FILE*)fp) != NULL)
+    {
+      //printf("%d\n", i);
+      dictionary[i] = (char*)malloc((std::strlen(buffer)+1)*sizeof(char));
+      std::strcpy(dictionary[i], buffer);
+      for(int j=0; j<(int)std::strlen(dictionary[i]); j++)
+      {
+        if(dictionary[i][j] == ' ' || dictionary[i][j] == '\t' || dictionary[i][j] == '\n')
+        {
+          dictionary[i][j] = '\0';
+        }
+      }
+      //printf("%s\n", dictionary[i]);
+      i++;
+    }
+    fclose(fp);
+}
+
+int editDistance(char* word, char* word2)///////////////////////////////////////////////////////////////////mason
+{
+  //int distance;
+  //printf("In ED.\n");
+  int i,j;
+  int table[strlen(word)+1][strlen(word2)+1];
+
+  for(i=0; i<=(int)std::strlen(word); i++)
+  {
+    for(j=0; j<=(int)std::strlen(word2); j++)
+    {
+
+      if(i==0 && j==0)
+      {
+        table[i][j] = 0;
+      }
+      else if(i==0 && j!=0)
+      {
+        table[i][j] = table[i][j-1]+1;
+      }
+      else if(i!=0 && j==0)
+      {
+        table[i][j] = table[i-1][j]+1;
+      }
+      else
+      {
+        if(word[i-1] == word2[j-1])
+        {
+          table[i][j] = min(table[i-1][j-1], table[i-1][j]+1, table[i][j-1]+1);
+        }
+        else
+        {
+          table[i][j] = 1 + min(table[i-1][j-1], table[i-1][j], table[i][j-1]);
+        }
+      }
+    }
+  }
+  //printf("ED between %s and %s is %d.\n", word, word2, table[std::strlen(word)][std::strlen(word2)]);
+  return table[std::strlen(word)][std::strlen(word2)];
+}
+
+char* spellcheck(char* input)/////////////////////////////////////////////////////////////////////////////mason
+{
+  //printf("In spellcheck.\n");
+
+  char line[500] = {0};
+  std::strcpy(line, input);
+  char* answer = (char*)malloc(500);
+  strcpy(answer, "");
+  int min;
+  int current;
+  char word[100]= {0};
+  char* token=nullptr;
+  token = std::strtok(line, " ");
+
+  if(input=="/")
+  {
+    return input;
+  }
+
+  while(token != NULL)
+  {
+    //printf("here\n");
+    min = (int)std::strlen(token);
+    if(search(token))
+    {
+      if(std::strlen(answer) != 0)
+      {
+        std::strcat(answer, " ");
+      }
+      std::strcat(answer, token);
+    }
+    else
+    {
+      //printf("there\n");
+      for(int i=0; i<size; i++)
+      {
+        current = editDistance(dictionary[i], token);
+        if(current < min)
+        {
+          min = current;
+          std::strcpy(word, dictionary[i]);
+        }
+      }
+      if(std::strlen(answer) != 0)
+      {
+        std::strcat(answer, " ");
+      }
+      std::strcat(answer, word);
+    }
+    //printf("answer: %s...\n", answer);
+    token = strtok(NULL, " ");
+  }
+  //printf("x\n");
+
+  return answer;
+}
+
+int min(int a, int b, int c)///////////////////////////////////////////////////////////////////////////////mason
+{
+  if(a<=b && a<=c)
+  {
+    return a;
+  }
+  if(b<=c)
+  {
+    return b;
+  }
+  return c;
+}
+
+int search(char* word)/////////////////////////////////////////////////////////////////////////////////////////mason
+{
+  //printf("In search.\n");
+  int low = 0;
+  int high = size;
+  int average;
+  while(low <= high)
+  {
+    average = (low+high)/2;
+    //printf("low: %d, high: %d, average: %d, size: %d.\n", low, high, average, size);
+    if(std::strcmp(dictionary[average], word) == 0)
+    {
+      return 1;
+    }
+    else if(std::strcmp(dictionary[average], word) > 0)
+    {
+      high = average - 1;
+    }
+    else
+    {
+      low = average + 1;
+    }
+  }
+  return 0;
+
+}
+
 
   void write(const chat_message& msg)
   {
@@ -491,6 +660,29 @@ public:
   	return str;
   }
 
+  void joinMessage()
+  {
+    std::string s1;
+    s1 = "*****";
+    s1 += get_username();
+    s1 += " has entered the chatroom **********";
+    char line1[s1.length()+1];
+    line1[0] = '\0';
+    std::strcat(line1, s1.c_str());
+    chat_message msg;
+    chat_message user;
+    char serverIsUser[6] = {0};
+    std::strcpy(serverIsUser, "server");
+    msg.set_chatname_current(chatroom_name);
+    msg.set_chatname_new(chatroom_name);
+    msg.make_username(serverIsUser);
+    msg.set_cmd(0);
+    msg.body_length(std::strlen(line1));
+    std::memcpy(msg.body(), line1, msg.body_length());
+    msg.encode_header();
+    write(msg);
+    std::memcpy(msg.body(), "\0", strlen("\0"));
+  }
 
 private:
   void do_connect(const tcp::resolver::results_type& endpoints)
@@ -542,7 +734,6 @@ private:
         asio::buffer(read_msg_.body(), read_msg_.body_length()),
         [this](std::error_code ec, std::size_t /*length*/)
         {
-          int printed = 1;
           char arr[11] = {0};
           std::string chatroomarray = "Lobby";
           strcpy(arr, read_msg_.decode_user());
@@ -571,12 +762,14 @@ private:
               chatroom = chatroom.substr(chatroom.find(':') + 1);
               char *ok = new char[chatroom.length() + 1];
               std::strcpy(ok, chatroom.c_str());
+              
               //find a way to compare rooms
               if(chatroomarray.find(ok) != std::string::npos)
               {
-
                 if(printed == 1)
                 {
+                  wprintw(lobby, "found");
+                  wrefresh(lobby);
                   wprintw(chat_rooms, ok);
                   wprintw(chat_rooms, "\n");
                   wrefresh(chat_rooms);
@@ -590,9 +783,21 @@ private:
                 wprintw(chat_rooms, ok);
                 wprintw(chat_rooms, "\n");
                 wrefresh(chat_rooms);
+                printed++;
                 delete ok;
               }
               chatroom.clear();
+            }
+            else if(std::strstr(test.body(), "*FT*"))////////////////////////////////////////////////////////////////////////////////mason
+            {
+              std::string users(test.body());
+              char newbuffer[users.size()];
+              std::strcpy(newbuffer,users.c_str());
+              int ch=0;
+
+              FILE* file = fopen( "newfilestransfer.txt", "wb" );
+              fwrite( newbuffer, 1, users.size()-4, file );
+              fclose(file);
             }
             else
             {
@@ -615,8 +820,6 @@ private:
           }
         });
   }
-
-
 
   void do_write()
   {
@@ -654,7 +857,11 @@ private:
   char* blocked_users[200] = {0};
   std::vector<std::string> listofAdmins;
   int x, y,a,b;
+  int printed = 1;
   WINDOW* window;
+  char** dictionary;
+
+  std::streamsize size;
 };
 
 
@@ -679,30 +886,16 @@ int main(int argc, char* argv[])
 
     std::thread t([&io_context](){ io_context.run(); });
 
+    char welcome[500] = {0};
+    std::strcat(welcome, "Welcome to the server! Type /help for a list of commands!\n");
+
+    wprintw(c.lobby, welcome);
+    wrefresh(c.lobby);
+
     char chatroom_name[20] = "Lobby";
     std::string return_str="";
 
-
-    std::string s1;
-    s1 = "*****";
-    s1 += c.get_username();
-    s1 += " has entered the chatroom **********";
-    char line1[s1.length()+1];
-    line1[0] = '\0';
-    std::strcat(line1, s1.c_str());
-    chat_message msg;
-    chat_message user;
-    char serverIsUser[6] = {0};
-    std::strcpy(serverIsUser, "server");
-    msg.set_chatname_current(chatroom_name);
-    msg.set_chatname_new(chatroom_name);
-    msg.make_username(serverIsUser);
-    msg.set_cmd(0);
-    msg.body_length(std::strlen(line1));
-    std::memcpy(msg.body(), line1, msg.body_length());
-    msg.encode_header();
-    c.write(msg);
-    std::memcpy(msg.body(), "\0", strlen("\0"));
+    c.joinMessage();
 
 
   bool run = true;
@@ -713,6 +906,7 @@ int main(int argc, char* argv[])
     char meme[chat_message::max_body_length+1] = {0};
     std::string message;
     chat_message msg1;
+    char suggestions[chat_message::max_body_length+1] = {0};
     message.push_back(xd);
     std::strcat(meme, message.c_str());
     mvwprintw(c.txt_field, 0,0, meme);
@@ -734,9 +928,23 @@ int main(int argc, char* argv[])
       {
         message.push_back(xd);
         strcpy(meme, message.c_str());
+
+        //char suggestions[500];
+        //char* temp=suggestions;
+
+        char* temp=0;
+        temp = c.spellcheck(meme);
+        std::strcpy(suggestions, temp);
+        free(temp);
+
+        if(std::strcmp(meme, suggestions) != 0){/////////
+        std::strcpy(meme, suggestions);////////
+      }//
+        wrefresh(c.txt_field);
         mvwprintw(c.txt_field, 0,0, meme);
         wrefresh(c.txt_field);
       }
+
     }
     if(message.front() == '\n')
     {
@@ -754,6 +962,7 @@ int main(int argc, char* argv[])
       std::strcat(helpMessage, "/delete <roomname> -- Deletes a given room with a given roomname.\n");
       std::strcat(helpMessage, "/block <username> -- Blocks the user entered from speaking in chat (admin only).\n");
       std::strcat(helpMessage, "/goto <roomname> -- Magically transports you to the chat room of your choosing!\n");
+      std::strcat(helpMessage, "/exit -- Properly exits the program.");
       std::strcat(helpMessage, "-------------------\n");
 
       wprintw(c.lobby, helpMessage);
@@ -773,6 +982,55 @@ int main(int argc, char* argv[])
       c.write(msg);
       wclear(c.lobby);
       wrefresh(c.lobby);
+    }
+    else if(message.find("/file") != std::string::npos)
+    {
+      std::string filename=message.substr(message.find(' ')+1);
+      char buffer[500];
+      char files[500]={0};
+      strcpy(files,filename.c_str());
+
+
+      FILE *f;
+
+      int words = 0;
+      char d;
+      f=fopen(files,"r");
+
+      if(filename==" ")
+      {
+
+        wprintw(c.lobby, "Error Opening File");
+        wrefresh(c.lobby);
+      }
+      else
+      {
+        wprintw(c.lobby, filename.c_str());
+        wprintw(c.lobby, " has been delivered!");
+        wrefresh(c.lobby);
+
+
+
+
+
+        while (!feof(f)) {
+        fread(&buffer, 1, 1024, f);
+        }
+
+        fclose(f);
+
+
+        std::string s4;
+        s4 = "*FT*";
+        std::strcat(buffer, s4.c_str());
+
+
+        chat_message msg4;
+        msg4.body_length(std::strlen(buffer));
+        std::memcpy(msg4.body(), buffer, msg4.body_length());
+        msg4.encode_header();
+        c.write(msg4);
+        }
     }
     else if(message.find("/delete") != std::string::npos)
     {
@@ -810,7 +1068,16 @@ int main(int argc, char* argv[])
       msg.set_cmd(1);
       msg.encode_header();
       c.set_chatname(chatroom_name);
+      wclear(c.lobbybox);
+      box(c.lobbybox, 0, 0);
+      mvwprintw(c.lobbybox, 0 , 0, chatroom_name);
+      wrefresh(c.lobbybox);
       c.write(msg);
+      c.joinMessage();
+    }
+    else if(message.find("/exit") != std::string::npos)
+    {
+      run = false;
     }
     else{
     char addendum[] = {0};
@@ -818,6 +1085,7 @@ int main(int argc, char* argv[])
     strcat(addendum, ": ");
     message.insert(0, addendum);
     strcpy(meme, message.c_str());
+    //std::strcpy(meme, suggestions);;
     msg1.make_username(c.get_username());
     msg1.set_cmd(0);
     msg1.set_chatname_current(chatroom_name);
